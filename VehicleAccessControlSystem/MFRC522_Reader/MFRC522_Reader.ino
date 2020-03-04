@@ -1,55 +1,49 @@
 #include <deprecated.h>
+#include <stdbool.h>
 #include <MFRC522.h>
 #include <MFRC522Extended.h>
 #include <require_cpp11.h>
-
-#include <deprecated.h>
-#include <MFRC522.h> 
-#include <MFRC522Extended.h>
 #include <SPI.h>
 #include <require_cpp11.h>
 #include <EEPROM.h>         // EEPROM (memory) library
 
+//#include <HC-SR04_Proximity_Sensor.ino>
+
 /*
- * --------------------------------------------------------------------------------------------------------------------
- * Example sketch/program showing how to read data from a PICC to serial.
- * --------------------------------------------------------------------------------------------------------------------
- * This is a MFRC522 library example; for further details and other examples see: https://github.com/miguelbalboa/rfid
- * 
- * Example sketch/program showing how to read data from a PICC (that is: a RFID Tag or Card) using a MFRC522 based RFID
- * Reader on the Arduino SPI interface.
- * 
- * When the Arduino and the MFRC522 module are connected (see the pin layout below), load this sketch into Arduino IDE
- * then verify/compile and upload it. To see the output: use Tools, Serial Monitor of the IDE (hit Ctrl+Shft+M). When
- * you present a PICC (that is: a RFID Tag or Card) at reading distance of the MFRC522 Reader/PCD, the serial output
- * will show the ID/UID, type and any data blocks it can read. Note: you may see "Timeout in communication" messages
- * when removing the PICC from reading distance too early.
- * 
- * If your reader supports it, this sketch/program will read all the PICCs presented (that is: multiple tag reading).
- * So if you stack two or more PICCs on top of each other and present them to the reader, it will first output all
- * details of the first and then the next PICC. Note that this may take some time as all data blocks are dumped, so
- * keep the PICCs at reading distance until complete.
- * 
- * @license Released into the public domain.
- * 
- * Typical pin layout used:
+ * Pin Layout for Arduino Mega:
+ * ------------------------------------
+ * Signal      MFRC522 Reader/PCD Pin        Arduino Mega Pin                       
  * -------------------------------------------------
- *             MFRC522      Arduino       Arduino   
- *             Reader/PCD   Uno/101       Mega      
- * Signal      Pin          Pin           Pin       
- * -------------------------------------------------
- * RST/Reset   RST          9             5         
- * SPI SS      SDA(SS)      10            53        
- * SPI MOSI    MOSI         11 / ICSP-4   51        
- * SPI MISO    MISO         12 / ICSP-1   50       
- * SPI SCK     SCK          13 / ICSP-3   52        
- 
+ * RST/Reset   RST                           5         
+ * SPI SS      SDA(SS)                       53        
+ * SPI MOSI    MOSI                          51        
+ * SPI MISO    MISO                          50       
+ * SPI SCK     SCK                           52        
+*/
+
+
+#define RST_PIN         5          // MFRC522 reference to pin on Arduino
+#define SS_PIN          53         // MFRC522 reference to pin on Arduino
+
+#define COMMON_ANODE
+#ifdef COMMON_ANODE
+#define LED_ON LOW
+#define LED_OFF HIGH
+#else
+#define LED_ON HIGH
+#define LED_OFF LOW
+#endif
+
+#define redLED 22    // LED reference to pin on Arduino
+#define greenLED 23  // LED reference to pin on Arduino
+#define yellowLED 24   // LED reference to pin on Arduino
+
+boolean authorized = false;          // Initialize authorized card to false
+boolean programMode = false;  // Initialize programming mode to false
 
 
 
-#define RST_PIN         5          // Configurable, see typical pin layout above
-#define SS_PIN          53         // Configurable, see typical pin layout above
-
+/*
 byte readCard[4];
 int successRead;
 
@@ -95,8 +89,63 @@ void ShowReaderDetails() {
     Serial.println("");
     // When 0x00 or 0xFF is returned, communication probably failed
     if ((v == 0x00) || (v == 0xFF)) {
-        Serial.println(F("WARNING: Communication failure, is the MFRC522 properly connected?"));
+        Serial.println(F("WARNING: Communication failure?"));
     }
 }
-
 */
+
+MFRC522 rfid(SS_PIN, RST_PIN); // Instance of class
+
+MFRC522::MIFARE_Key key;
+
+// Init array that store new NUID
+byte nuidPICC[4];
+int distance;
+
+void setup() {
+  
+  
+  Serial.begin(9600);
+  SPI.begin(); // Init SPI bus
+  rfid.PCD_Init(); // Init MFRC522
+
+  for (byte i = 0; i < 6; i++) {
+    key.keyByte[i] = 0xFF;
+  }
+
+  HC_SR04Setup();
+  servoSetup();
+}
+
+ 
+void loop() {
+
+  // Look for new cards
+  if ( ! rfid.PICC_IsNewCardPresent())
+    return;
+
+  // Verify if the NUID has been readed
+  if ( ! rfid.PICC_ReadCardSerial())
+    return;
+
+ for (byte i = 0; i < 4; i++) {
+      nuidPICC[i] = rfid.uid.uidByte[i];
+    }
+   
+  printHex(rfid.uid.uidByte, rfid.uid.size);
+    Serial.println();
+   rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+}
+
+
+void printHex(byte *buffer, byte bufferSize) {
+  for (byte i = 0; i < bufferSize; i++) {
+    Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+    Serial.print(buffer[i], HEX);
+  }
+
+  HR_SR04Loop();
+  servoLoop();
+  check(distance);
+}
