@@ -27,7 +27,7 @@ void HR_SR04Loop(){
 }
 
   bool check(int distance) {
-      if(distance <= 20) {
+      if(distance <= 15) {
         return true;
         Serial.print(" TRUE ");
       } else {
