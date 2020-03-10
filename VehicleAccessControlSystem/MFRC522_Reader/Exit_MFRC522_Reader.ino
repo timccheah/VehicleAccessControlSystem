@@ -1,3 +1,6 @@
+#define EXIT_RST_PIN         4          // MFRC522 reference to pin on Arduino
+#define EXIT_SS_PIN          47         // MFRC522 reference to pin on Arduino
+
 void Exit_MFRC522_Setup() {
   Serial.begin(9600);
   SPI.begin(); // Init SPI bus
@@ -22,7 +25,7 @@ void Exit_MFRC522_Loop() {
       nuidPICC[i] = rfid.uid.uidByte[i];
     }
    
-  printHex(rfid.uid.uidByte, rfid.uid.size);
+  Exit_printHex(rfid.uid.uidByte, rfid.uid.size);
     Serial.println();
    rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
