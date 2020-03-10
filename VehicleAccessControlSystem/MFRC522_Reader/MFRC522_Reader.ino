@@ -112,7 +112,7 @@ void setup() {
   for (byte i = 0; i < 6; i++) {
     key.keyByte[i] = 0xFF;
   }
-
+  Exit_MFRC522_Setup();
   HC_SR04Setup();
   servoSetup();
 }
@@ -136,6 +136,13 @@ void loop() {
     Serial.println();
    rfid.PICC_HaltA();
   rfid.PCD_StopCrypto1();
+
+
+  Exit_MFRC522_Loop();
+  HR_SR04Loop();
+ if (check(distance) == true) {
+    servoLoop();
+ }
 }
 
 
@@ -145,7 +152,4 @@ void printHex(byte *buffer, byte bufferSize) {
     Serial.print(buffer[i], HEX);
   }
 
-  HR_SR04Loop();
-  servoLoop();
-  check(distance);
 }
